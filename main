@@ -1,0 +1,140 @@
+from difflib import get_close_matches
+from discord import Intents, Client
+from discord.ext import commands
+import mysql.connector
+from hosting import hosting
+
+def connect_database():
+    return mysql.connector.connect(
+        host="localhost",
+        user="yassine",
+        password="zlibigot",
+        database="batri9"
+    )
+
+def import_data():
+    conn = connect_database()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT question, answer FROM knowledge")
+    data = cursor.fetchall()
+    conn.close()
+    return data
+
+def add_data(question, answer):
+    conn = connect_database()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO knowledge (question, answer) VALUES (%s, %s)", (question, answer))
+    conn.commit()
+    conn.close()
+
+def delete_data(question):
+    conn = connect_database()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE knowledge SET answer = '' WHERE question = %s", (question,))
+    conn.commit()
+    conn.close()
+
+def delete_data2(question):
+    conn = connect_database()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM knowledge WHERE question = %s", (question,))
+    conn.commit()
+    conn.close()
+
+def update_answer(question, new_answer):
+    conn = connect_database()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE knowledge SET answer = %s WHERE question = %s", (new_answer, question))
+    conn.commit()
+    conn.close()
+
+def answer(user_question, knowledge):
+    for i in knowledge:
+        if i["question"] == user_question:
+            return i["answer"]
+
+def best_matche(user_question, questions):
+    close_matches = get_close_matches(user_question, questions, n=1, cutoff=1)
+    if close_matches:
+        return close_matches[0]
+
+intents = Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+knowledge = import_data()
+
+@bot.event
+async def on_ready():
+    print('9olna esalem')
+
+@bot.command(name='!')
+async def ask_question(ctx, *, user_question):
+    match = best_matche(user_question, [i["question"] for i in knowledge])
+    if match:
+        ans = answer(match, knowledge)
+        await ctx.send(ans)
+    else:
+        await ctx.send("mch 3aref chnjeweb nawarni belehi!")
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+
+        try:
+            response = await bot.wait_for('message', check=check, timeout=120.0)
+            new_answer = response.content
+            if new_answer.lower() != "saker" and "!!" not in new_answer.lower():
+                add_data(user_question, new_answer)
+                await ctx.send("mrgl")
+            elif new_answer.lower() == "saker" and str(response.author)=="zlibigot":
+                await ctx.send("hather sidi")
+            elif new_answer.lower() == "saker":
+                await ctx.send("hani sket ama na9es ml 9beha belehi")
+        except TimeoutError:
+            await ctx.send("se3a bch tjeweb? mch lezem!")
+
+@bot.command(name='badel')
+async def change_data(ctx, *, user_question):
+    if str(ctx.message.author) != "zlibigot":
+        await ctx.send("maybadel data base ken sidi zlibi")
+    else:
+        match = best_matche(user_question, [i["question"] for i in knowledge])
+        if match:
+            delete_data(match)
+            await ctx.send(f"cbon fasa5t ereponse ta3 '{user_question}' het ereponse ejdida eli theb 3leha")
+            def check(m):
+                return m.author == ctx.author and m.channel == ctx.channel
+
+            try:
+                response = await bot.wait_for('message', check=check, timeout=120.0)
+                new_answer = response.content
+                if new_answer.lower() != "saker" and "!badel" not in new_answer.lower():
+                    update_answer(match, new_answer)
+                    await ctx.send("mrgl")
+            except TimeoutError:
+                await ctx.send("tawalet sidi donc 3awed mlowel")
+        else:
+            await ctx.send("mch mawjouda el question sidi")
+
+@bot.command(name="fasa5")
+async def fasa5(ctx, *, user_question):
+    if str(ctx.message.author) != "zlibigot":
+        await ctx.send("maybadel data base ken sidi zlibi")
+    else:
+        match = best_matche(user_question, [i["question"] for i in knowledge])
+        if match:
+            delete_data2(match)
+            await ctx.send(f"cbon fasa5t elquestion'{user_question}'")
+        else:
+            await ctx.send("mch mawjouda el question sidi")
+
+@bot.command(name='ref')
+async def refresh_data(ctx):
+    global knowledge
+    knowledge = import_data()
+    if str(ctx.message.author) == "zlibigot":
+        await ctx.send("cbon refreshit ma3loumeti sidi")
+    else:
+        await ctx.send("cbon refreshit ma3loumeti")
+
+hosting()
+bot.run('discord code')
