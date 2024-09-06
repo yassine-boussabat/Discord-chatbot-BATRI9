@@ -137,4 +137,4 @@ async def refresh_data(ctx):
         await ctx.send("cbon refreshit ma3loumeti")
 
 hosting()
-bot.run('discord code')
+bot.run('YOUR_DISCORD_BOT_TOKEN')
