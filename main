@@ -54,7 +54,7 @@ def answer(user_question, knowledge):
             return i["answer"]
 
 def best_matche(user_question, questions):
-    close_matches = get_close_matches(user_question, questions, n=1, cutoff=1)
+    close_matches = get_close_matches(user_question, questions, n=1, cutoff=0.8)
     if close_matches:
         return close_matches[0]
 
